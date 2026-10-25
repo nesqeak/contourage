@@ -1,0 +1,245 @@
+{
+ "note": "Structures citées par les recommandations de RCP ORL de poche, absentes de l'atlas : créées vides, à contourer manuellement dans la visionneuse.",
+ "structs": [
+  {
+   "g": "T",
+   "id": "levre",
+   "name": "CTV lèvre",
+   "median": false,
+   "color": "#f06292",
+   "source": "Cavité buccale · lèvre"
+  },
+  {
+   "g": "T",
+   "id": "gencive_inf",
+   "name": "CTV gencive inférieure",
+   "median": false,
+   "color": "#ba68c8",
+   "source": "Cavité buccale · gencive inférieure, lèvre, commissure"
+  },
+  {
+   "g": "T",
+   "id": "gencive_sup",
+   "name": "CTV gencive supérieure et tubérosité maxillaire",
+   "median": false,
+   "color": "#9575cd",
+   "source": "Cavité buccale · gencive supérieure, trigone sup."
+  },
+  {
+   "g": "T",
+   "id": "mandibule",
+   "name": "CTV corticale mandibulaire et branche montante",
+   "median": false,
+   "color": "#e0e0e0",
+   "source": "Cavité buccale · gencive inférieure, trigone inf."
+  },
+  {
+   "g": "T",
+   "id": "glande_sublinguale",
+   "name": "CTV glande sublinguale",
+   "median": false,
+   "color": "#ffb74d",
+   "source": "Cavité buccale · plancher"
+  },
+  {
+   "g": "T",
+   "id": "pterygo_mandibulaire",
+   "name": "CTV espace ptérygo-mandibulaire",
+   "median": false,
+   "color": "#4db6ac",
+   "source": "Cavité buccale · trigone rétromolaire inf."
+  },
+  {
+   "g": "T",
+   "id": "paroi_laterale_oro",
+   "name": "CTV paroi pharyngée latérale (oropharynx)",
+   "median": false,
+   "color": "#81c784",
+   "source": "Oropharynx · pilier postérieur, paroi postérieure"
+  },
+  {
+   "g": "T",
+   "id": "epiglotte",
+   "name": "CTV épiglotte",
+   "median": true,
+   "color": "#64b5f6",
+   "source": "Oropharynx · vallécule ; Larynx · supra-glotte"
+  },
+  {
+   "g": "T",
+   "id": "paroi_post_hypo",
+   "name": "CTV paroi pharyngée postérieure (hypopharynx)",
+   "median": false,
+   "color": "#5c6bc0",
+   "source": "Hypopharynx · paroi postérieure, rétrocricoïde"
+  },
+  {
+   "g": "T",
+   "id": "paroi_laterale_hypo",
+   "name": "CTV paroi pharyngée latérale (hypopharynx)",
+   "median": false,
+   "color": "#7986cb",
+   "source": "Hypopharynx · parois"
+  },
+  {
+   "g": "T",
+   "id": "sinus_piriforme",
+   "name": "CTV sinus piriforme",
+   "median": false,
+   "color": "#ff8a65",
+   "source": "Hypopharynx · sinus piriforme, paroi latérale, rétrocricoïde"
+  },
+  {
+   "g": "T",
+   "id": "retrocricoide",
+   "name": "CTV région rétrocricoïdienne",
+   "median": true,
+   "color": "#a1887f",
+   "source": "Hypopharynx · rétrocricoïde, sinus piriforme"
+  },
+  {
+   "g": "T",
+   "id": "repli_ae",
+   "name": "CTV repli ary-épiglottique",
+   "median": false,
+   "color": "#4dd0e1",
+   "source": "Hypopharynx · sinus piriforme ; Larynx · supra-glotte"
+  },
+  {
+   "g": "T",
+   "id": "pre_epiglottique",
+   "name": "CTV espace pré-épiglottique",
+   "median": true,
+   "color": "#aed581",
+   "source": "Larynx · supra-glotte"
+  },
+  {
+   "g": "T",
+   "id": "paraglottique",
+   "name": "CTV espace paraglottique",
+   "median": false,
+   "color": "#dce775",
+   "source": "Larynx · supra-glotte, sous-glotte ; Hypopharynx · sinus piriforme"
+  },
+  {
+   "g": "T",
+   "id": "bande_ventriculaire",
+   "name": "CTV bande ventriculaire",
+   "median": false,
+   "color": "#fff176",
+   "source": "Larynx · supra-glotte"
+  },
+  {
+   "g": "T",
+   "id": "arytenoide",
+   "name": "CTV aryténoïde",
+   "median": false,
+   "color": "#ffd54f",
+   "source": "Larynx · supra-glotte"
+  },
+  {
+   "g": "T",
+   "id": "corde_vocale",
+   "name": "CTV corde vocale",
+   "median": false,
+   "color": "#f48fb1",
+   "source": "Larynx · glotte"
+  },
+  {
+   "g": "T",
+   "id": "commissure_ant",
+   "name": "CTV commissure antérieure",
+   "median": true,
+   "color": "#ce93d8",
+   "source": "Larynx · glotte"
+  },
+  {
+   "g": "T",
+   "id": "sous_glotte",
+   "name": "CTV sous-glotte",
+   "median": true,
+   "color": "#b39ddb",
+   "source": "Larynx · glotte, sous-glotte"
+  },
+  {
+   "g": "T",
+   "id": "parotide",
+   "name": "CTV loge parotidienne",
+   "median": false,
+   "color": "#90caf9",
+   "source": "Glande salivaire · parotide"
+  },
+  {
+   "g": "T",
+   "id": "clivus",
+   "name": "CTV clivus",
+   "median": true,
+   "color": "#bcaaa4",
+   "source": "Nasopharynx · toit du cavum, consensus 2024"
+  },
+  {
+   "g": "T",
+   "id": "foramen_lacerum",
+   "name": "CTV trou déchiré",
+   "median": false,
+   "color": "#ef9a9a",
+   "source": "Nasopharynx · paroi latérale"
+  },
+  {
+   "g": "T",
+   "id": "sinus_maxillaire",
+   "name": "CTV sinus maxillaire",
+   "median": false,
+   "color": "#80cbc4",
+   "source": "Sinus · maxillaire ; Cavité buccale · gencive sup., palais dur"
+  },
+  {
+   "g": "T",
+   "id": "masticateur",
+   "name": "CTV espace masticateur",
+   "median": false,
+   "color": "#c5e1a5",
+   "source": "Sinus · maxillaire"
+  },
+  {
+   "g": "T",
+   "id": "fissure_orbitaire_sup",
+   "name": "CTV fissure orbitaire supérieure",
+   "median": false,
+   "color": "#ffcc80",
+   "source": "Sinus · sphénoïde"
+  },
+  {
+   "g": "T",
+   "id": "ethmoide",
+   "name": "CTV cellules ethmoïdales",
+   "median": false,
+   "color": "#80deea",
+   "source": "Sinus ethmoïde ; Fosses nasales"
+  },
+  {
+   "g": "T",
+   "id": "lame_criblee",
+   "name": "CTV lame criblée et planum sphénoïdal",
+   "median": true,
+   "color": "#b0bec5",
+   "source": "Sinus ethmoïde"
+  },
+  {
+   "g": "T",
+   "id": "fosse_nasale",
+   "name": "CTV fosse nasale",
+   "median": false,
+   "color": "#9fa8da",
+   "source": "Fosses nasales ; Nasopharynx (choanes) ; palais dur"
+  },
+  {
+   "g": "T",
+   "id": "septum_nasal",
+   "name": "CTV septum nasal",
+   "median": true,
+   "color": "#e6ee9c",
+   "source": "Fosses nasales"
+  }
+ ]
+}

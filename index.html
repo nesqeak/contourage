@@ -147,9 +147,11 @@ const PRESETS = [
   {id:'large',name:'Large', W:4000, L:500},
 ];
 let preset = PRESETS[0];
-const [meta, buf] = await Promise.all([
+const [meta, buf, todo] = await Promise.all([
   fetch('data/ctv.json').then(r=>r.json()),
-  fetch('data/ct.txt').then(r=>r.text())
+  fetch('data/ct.txt').then(r=>r.text()),
+  // structures citées par RCP ORL de poche mais pas encore contourées : créées vides
+  fetch('data/ctv_a_contourer.json').then(r=>r.ok?r.json():{structs:[]}).catch(()=>({structs:[]}))
 ]);
 const [NX,NY,NZ] = meta.dims, SZ = meta.spacing[2], N=NX*NY*NZ;
 const vol = (()=>{const s=atob(buf.trim()),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;})();
@@ -161,6 +163,8 @@ const b64ToBytes=s=>{const r=atob(s),b=new Uint8Array(r.length);for(let i=0;i<r.
 const bytesToB64=b=>{let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s);};
 function unpack(bbox,bits){const [x0,x1,y0,y1,z0,z1]=bbox,w=x1-x0+1,h=y1-y0+1,dz=z1-z0+1,by=b64ToBytes(bits),m=new Uint8Array(w*h*dz);
   for(let i=0;i<m.length;i++)m[i]=(by[i>>3]>>(i&7))&1; return {b:[x0,x1,y0,y1,z0,z1],w,h,m};}
+const emptyMask=()=>({b:[NX,-1,NY,-1,NZ,-1],w:0,h:0,m:null});
+const maskOf=(bbox,bits)=>bbox?unpack(bbox,bits):emptyMask();
 function setMask(st,mk){st.b=mk.b;st.w=mk.w;st.h=mk.h;st.m=mk.m;st.full=false;}
 function toFull(st){if(st.full)return; const f=new Uint8Array(N),[x0,x1,y0,y1,z0,z1]=st.b;
   if(st.m) for(let z=z0;z<=z1;z++)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++) if(st.m[((z-z0)*st.h+(y-y0))*st.w+(x-x0)]) f[IDX(x,y,z)]=1;
@@ -178,31 +182,34 @@ const growBox=(st,x,y,z)=>{const b=st.b;if(x<b[0])b[0]=x;if(x>b[1])b[1]=x;if(y<b
 
 // ---- côté droit : copie en miroir des structures latérales (tracées à gauche) ----
 const MIRROR=219; // x' = MIRROR - x : ligne médiane entre x = 109 et x = 110
-const isMedian=s=>s.bbox[0]<105; // palais dur, sinus sphénoïdal, voile, Ia, VIa, VIb
+const isMedian=s=>s.median??s.bbox[0]<105; // atlas : palais dur, sinus sphénoïdal, voile, Ia, VIa, VIb
 function mirrorMask(s){const mk=unpack(s.bbox,s.bits),{w,h}=mk,dz=s.bbox[5]-s.bbox[4]+1,by=new Uint8Array((w*h*dz+7)>>3);
   for(let z=0;z<dz;z++)for(let y=0;y<h;y++){const o=(z*h+y)*w;for(let x=0;x<w;x++){const i=o+x; if(mk.m[o+w-1-x]) by[i>>3]|=1<<(i&7);}}
   const [x0,x1,...rest]=s.bbox; return {bbox:[MIRROR-x1,MIRROR-x0,...rest],bits:bytesToB64(by)};}
-const RAW=meta.structs.flatMap(s=>isMedian(s)?[s]:[
-  {...s,name:s.name+' gauche'},
-  {...s,...mirrorMask(s),id:s.id+'_d',name:s.name+' droit',center:[MIRROR-s.center[0],s.center[1],s.center[2]]}]);
+const sides=(s,right)=>isMedian(s)?[{...s,median:true}]:[{...s,median:false,name:s.name+' gauche'},{...s,median:false,...right,id:s.id+'_d',name:s.name+' droit'}];
+const atlas=meta.structs.flatMap(s=>sides(s,{...mirrorMask(s),center:[MIRROR-s.center[0],s.center[1],s.center[2]]}));
+const empty=(todo.structs||[]).flatMap(s=>sides({...s,bbox:null,bits:'',empty:true},{}));
+// les structures vides se rangent après celles de leur groupe
+const RAW=[...atlas.filter(s=>s.g==='T'),...empty.filter(s=>s.g==='T'),...atlas.filter(s=>s.g!=='T'),...empty.filter(s=>s.g!=='T')];
 const S = RAW.map(s=>{
   const rgb=[1,3,5].map(i=>parseInt(s.color.slice(i,i+2),16));
   const st={...s,rgb,on:true,orig:{bbox:s.bbox,bits:s.bits},edited:false,dirty:false,saving:false,stamp:0};
-  setMask(st,unpack(s.bbox,s.bits)); return st;});
+  setMask(st,maskOf(s.bbox,s.bits)); return st;});
 const byId=Object.fromEntries(S.map(s=>[s.id,s]));
 
 // ---- volumes composites transmis par RCP ORL de poche (?ctv_p_br=…&ctv_n_br=…&cas=…) ----
 const Q=new URLSearchParams(location.search);
 // « id_g » / « id_d » désignent le côté ; une structure médiane est acceptée avec ou sans suffixe
-const resolveRef=r=>{ if(byId[r]) return byId[r]; const m=r.match(/^(.*)_(g|d)$/); return m&&byId[m[1]]&&(m[2]==='g'||isMedian(byId[m[1]]))?byId[m[1]]:null; };
+const resolveRef=r=>{ if(byId[r]) return byId[r]; const m=r.match(/^(.*)_(g|d)$/); return m&&byId[m[1]]&&(m[2]==='g'||byId[m[1]].median)?byId[m[1]]:null; };
 const COMPOSITES=[
-  {key:'ctv_p_br', id:'CTV_P_BR', name:'CTV_P_BR · CTV T bas risque', color:'#ff5fa2'},
-  {key:'ctv_n_br', id:'CTV_N_BR', name:'CTV_N_BR · CTV N bas risque', color:'#ffd23f'},
+  {keys:['ctv_t_br','ctv_p_br'], id:'CTV_T_BR', name:'CTV_T_BR · CTV T bas risque', color:'#ff2a2a'},
+  {keys:['ctv_n_br'], id:'CTV_N_BR', name:'CTV_N_BR · CTV N bas risque', color:'#00e5ff'},
 ];
 const comps=[], unknownRefs=[];
+var caseShown=false; // bandeau du cas affiché
 for(const c of COMPOSITES){
   const parts=[];
-  for(const r of (Q.get(c.key)||'').split(',').map(x=>x.trim()).filter(Boolean)){
+  for(const r of (c.keys.map(k=>Q.get(k)).find(Boolean)||'').split(',').map(x=>x.trim()).filter(Boolean)){
     const st=resolveRef(r); if(!st) unknownRefs.push(r); else if(!parts.includes(st)) parts.push(st); }
   if(parts.length) comps.push({g:'C',id:c.id,name:c.name,color:c.color,rgb:[1,3,5].map(i=>parseInt(c.color.slice(i,i+2),16)),
     composite:true,parts,on:true,edited:false,dirty:false,saving:false,stamp:0,b:[NX,-1,NY,-1,NZ,-1]});
@@ -211,7 +218,8 @@ for(const c of COMPOSITES){
 function refreshComposites(){ for(const c of comps){ const f=new Uint8Array(N);
   for(const p of c.parts){ const b=p.b; if(!b||b[1]<b[0]) continue;
     for(let z=b[4];z<=b[5];z++)for(let y=b[2];y<=b[3];y++)for(let x=b[0];x<=b[1];x++) if(has(p,x,y,z)) f[IDX(x,y,z)]=1; }
-  c.m=f; c.full=true; c.w=NX; c.h=NY; c.b=tightBox(c)||[NX,-1,NY,-1,NZ,-1]; } }
+  c.m=f; c.full=true; c.w=NX; c.h=NY; c.b=tightBox(c)||[NX,-1,NY,-1,NZ,-1]; }
+  if(caseShown) renderCase(); }
 refreshComposites();
 S.unshift(...comps);
 if(comps.length){ S.forEach(st=>st.on=!!st.composite); }
@@ -365,7 +373,7 @@ async function save(st){
   finally{ st.saving=false; }
 }
 async function resetStruct(st){
-  setMask(st,unpack(st.orig.bbox,st.orig.bits)); st.edited=false; st.dirty=false; ED.undo=ED.undo.filter(k=>k.st!==st);
+  setMask(st,maskOf(st.orig.bbox,st.orig.bits)); st.edited=false; st.dirty=false; ED.undo=ED.undo.filter(k=>k.st!==st);
   clearTimeout(saveTimers[st.id]); refreshComposites(); drawAll(); updEdit();
   if(store){ try{ await store.del(st.id); setStatus(`${st.name} : contour initial rétabli.`);}catch(e){ setStatus('Le contour initial n\'a pas pu être rétabli pour tout le monde.','err'); } }
 }
@@ -439,16 +447,17 @@ document.addEventListener('keydown',e=>{ if(!ED.on||e.target.closest('select,inp
   else if(e.key==='p'||e.key==='P'){ED.tool='paint';updEdit();} else if(e.key==='g'||e.key==='G'){ED.tool='erase';updEdit();}
   else if(e.key==='['){ED.r=Math.max(1,ED.r-1);$('erad').value=ED.r;updEdit();} else if(e.key===']'){ED.r=Math.min(12,ED.r+1);$('erad').value=ED.r;updEdit();}
   if(ED.hover) draw(ED.hover.vw);});
-// ---- bandeau du cas transmis ----
-if(Q.has('cas')||comps.length||unknownRefs.length){
-  const box=$('case'), esc=t=>t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// ---- bandeau du cas transmis (mis à jour quand un sous-CTV vide est contouré) ----
+function renderCase(){
+  const box=document.getElementById('case'), esc=t=>t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   box.innerHTML=`<div><b>Cas transmis par RCP ORL de poche</b>${Q.get('cas')?' · '+esc(Q.get('cas')):''}</div>`+
-    (comps.length?comps.map(c=>`<div class="parts"><span style="color:${c.color}">${c.id}</span> = ${c.parts.map(p=>esc(p.name.replace(/^CTV /,''))).join(' + ')}</div>`).join('')
+    (comps.length?comps.map(c=>`<div class="parts"><span style="color:${c.color}">${c.id}</span> = ${c.parts.map(p=>esc(p.name.replace(/^CTV /,''))+(p.b[1]<p.b[0]?' <i>(vide, à contourer)</i>':'')).join(' + ')}</div>`).join('')
       :'<div class="parts">Aucun volume composite pour ce cas : atlas complet affiché.</div>')+
     (unknownRefs.length?`<div class="warn">Structures inconnues ignorées : ${unknownRefs.map(esc).join(', ')}</div>`:'')+
     '<div class="parts">Les sous-CTV restent affichables dans la liste. Côté droit : copie en miroir des structures tracées à gauche.</div>';
   box.hidden=false;
 }
+if(Q.has('cas')||comps.length||unknownRefs.length){ caseShown=true; renderCase(); }
 updEdit(); drawAll();
 
 // ---- stockage partagé : chargement des contours modifiés ----
@@ -480,7 +489,7 @@ if(STANDALONE){
   try{ const u=await claude.use('user'); const w=u?await u.can('data.write'):null; if(w===false){ED.canWrite=false; setStatus('Lecture seule : vous pouvez consulter les contours modifiés mais pas les changer.'); updEdit();} }catch(e){}
   db.collection('masks').onSnapshot(snap=>{
     for(const ch of snap.docChanges()){
-      if(ch.type==='removed'){const st=byId[ch.doc.id]; if(st&&!st.dirty&&!st.saving){setMask(st,unpack(st.orig.bbox,st.orig.bits)); st.edited=false; st.stamp=0;} }
+      if(ch.type==='removed'){const st=byId[ch.doc.id]; if(st&&!st.dirty&&!st.saving){setMask(st,maskOf(st.orig.bbox,st.orig.bits)); st.edited=false; st.stamp=0;} }
       else if(!ch.doc.metadata.hasPendingWrites) applyRemote(ch.doc.id,ch.doc.data());
     }
     refreshComposites(); drawAll();
