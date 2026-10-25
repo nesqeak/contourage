@@ -22,7 +22,7 @@ L'appli peut aussi être servie par GitHub Pages depuis la racine du dépôt.
 
 - Trois vues liées (axiale, coronale, sagittale), défilement à la molette, fenêtrages abdominal (W 400 / L 40), tissus mous, os et large.
 - Liste des structures par groupe (tumoraux / ganglionnaires) ; cliquer sur un nom centre les vues sur la structure.
-- **Mode édition** : pinceau et gomme (rayon 1–12 mm), option pour ne pas peindre l'air ni l'os, copie de la coupe voisine, vider la coupe, annulation (Ctrl+Z), retour au contour initial. Raccourcis : P pinceau, G gomme, `[` et `]` rayon.
+- **Mode édition** : pinceau et gomme (rayon 1–12 mm), option pour ne pas peindre l'air ni l'os, copie de la coupe voisine, vider la coupe, effacer toute la structure (avec confirmation), annulation (Ctrl+Z), retour au contour initial. Raccourcis : P pinceau, G gomme, `[` et `]` rayon.
 - **Volumes composites** : l'URL peut demander la somme de plusieurs sous-CTV, affichée en tête de liste. C'est ainsi que *RCP ORL de poche* ouvre la visionneuse pour un cas :
 
   ```
