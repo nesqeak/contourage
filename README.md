@@ -26,10 +26,10 @@ L'appli peut aussi être servie par GitHub Pages depuis la racine du dépôt.
 - **Volumes composites** : l'URL peut demander la somme de plusieurs sous-CTV, affichée en tête de liste. C'est ainsi que *RCP ORL de poche* ouvre la visionneuse pour un cas :
 
   ```
-  index.html?cas=Oropharynx · T1 N1 · côté gauche&ctv_p_br=amygdale_g,pilier_ant_g&ctv_n_br=n_II_g,n_III_g
+  index.html?cas=Oropharynx · T1 N1 · côté gauche&ctv_t_br=amygdale_g,pilier_ant_g&ctv_n_br=n_II_g,n_III_g
   ```
 
-  `ctv_p_br` (CTV T bas risque) et `ctv_n_br` (CTV N bas risque) listent des identifiants de structures suivis de `_g` ou `_d` pour le côté (sans suffixe pour une structure médiane). Sans paramètre, l'atlas complet est affiché.
+  `ctv_t_br` (CTV T bas risque, en rouge) et `ctv_n_br` (CTV N bas risque, en cyan) listent des identifiants de structures suivis de `_g` ou `_d` pour le côté (sans suffixe pour une structure médiane). Sans paramètre, l'atlas complet est affiché. Un sous-CTV encore vide est signalé « à contourer » dans le bandeau du cas.
 - Les contours modifiés sont gardés dans le navigateur (`localStorage`). **Exporter les contours** produit un fichier JSON réimportable avec **Importer…**.
 
 ## Données
@@ -38,6 +38,7 @@ L'appli peut aussi être servie par GitHub Pages depuis la racine du dépôt.
 |---|---|
 | `data/ct.txt` | Volume CT du patient 123, recadré à 230 × 224 × 64 voxels de 1 × 1 × 3 mm, uint8 encodé en base64, ordre x puis y puis z (orientation LPS : x vers la gauche du patient, y vers l'arrière, z vers le haut). |
 | `data/ctv.json` | Dimensions, espacement et, pour chaque structure, groupe, nom, couleur, boîte englobante `[x0,x1,y0,y1,z0,z1]` et masque binaire empaqueté (bits, ordre little-endian, base64). |
+| `data/ctv_a_contourer.json` | Structures citées par les recommandations de *RCP ORL de poche* mais absentes de l'atlas (larynx, hypopharynx, sinus, fosses nasales, lèvre, parotide…) : créées vides, des deux côtés sauf si `median`, à contourer avec le mode édition. Fichier séparé pour ne pas être écrasé par `scripts/export.py`. |
 
 Les intensités du jeu source sont normalisées sur 0–255 et non en unités Hounsfield. Les valeurs HU affichées sont estimées par une correspondance linéaire calibrée sur la graisse et les tissus mous : `HU ≈ -100 + 26,4 × (v - 71)`.
 
