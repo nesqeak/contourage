@@ -5,7 +5,7 @@ Visionneuse et éditeur de contours pour un scanner tête et cou, avec les volum
 - **CTV tumoraux** : « CTV structures » péritumoraux de Lapeyre M. et al. (GORTEC), *Cancer/Radiothérapie* 2005;9:261–270 — 25 structures (cavité buccale et oropharynx, espaces profonds, base du crâne).
 - **CTV ganglionnaires** : niveaux de Grégoire V. et al., *Radiotherapy and Oncology* 2014;110:172–181 (consensus DAHANCA, EORTC, HKNPCSG, NCIC CTG, NCRI, RTOG, TROG) — niveaux Ia, Ib, II, III, V, VIa, VIb (partiel), VIIa, VIIb, VIII, IX, Xa, Xb.
 
-Les CTV sont tracés du côté gauche du patient (droite de l'image) ; Ia et VI sont médians.
+Les CTV sont tracés du côté gauche du patient (droite de l'image) ; l'appli en crée au chargement une copie en miroir pour le côté droit (suffixe `_d`), par symétrie autour de la ligne médiane située entre x = 109 et x = 110. Les structures médianes (Ia, VIa, VIb, palais dur, sinus sphénoïdal, voile) ne sont pas dupliquées.
 
 > Contours indicatifs, à visée pédagogique et de recherche. Ils ne sont pas validés cliniquement et ne doivent pas servir à planifier un traitement.
 
@@ -23,6 +23,13 @@ L'appli peut aussi être servie par GitHub Pages depuis la racine du dépôt.
 - Trois vues liées (axiale, coronale, sagittale), défilement à la molette, fenêtrages abdominal (W 400 / L 40), tissus mous, os et large.
 - Liste des structures par groupe (tumoraux / ganglionnaires) ; cliquer sur un nom centre les vues sur la structure.
 - **Mode édition** : pinceau et gomme (rayon 1–12 mm), option pour ne pas peindre l'air ni l'os, copie de la coupe voisine, vider la coupe, annulation (Ctrl+Z), retour au contour initial. Raccourcis : P pinceau, G gomme, `[` et `]` rayon.
+- **Volumes composites** : l'URL peut demander la somme de plusieurs sous-CTV, affichée en tête de liste. C'est ainsi que *RCP ORL de poche* ouvre la visionneuse pour un cas :
+
+  ```
+  index.html?cas=Oropharynx · T1 N1 · côté gauche&ctv_p_br=amygdale_g,pilier_ant_g&ctv_n_br=n_II_g,n_III_g
+  ```
+
+  `ctv_p_br` (CTV T bas risque) et `ctv_n_br` (CTV N bas risque) listent des identifiants de structures suivis de `_g` ou `_d` pour le côté (sans suffixe pour une structure médiane). Sans paramètre, l'atlas complet est affiché.
 - Les contours modifiés sont gardés dans le navigateur (`localStorage`). **Exporter les contours** produit un fichier JSON réimportable avec **Importer…**.
 
 ## Données
