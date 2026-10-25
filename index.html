@@ -66,6 +66,10 @@ footer a{color:var(--accent)}
 .mod{font-family:var(--f-data);font-size:.62rem;color:var(--warn);margin-left:6px}
 .hint{font-size:.76rem;color:var(--muted)}
 .view.editing canvas{cursor:none}
+.case{background:var(--panel);border:1px solid var(--accent);border-radius:4px;padding:10px 12px;margin-bottom:14px;display:grid;gap:4px;font-size:.85rem}
+.case b{color:var(--accent);font-weight:600}
+.case .parts{color:var(--muted);font-size:.8rem}
+.case .warn{color:var(--warn);font-size:.8rem}
 </style>
 <style>*,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}body{margin:0}</style>
 </head>
@@ -74,8 +78,9 @@ footer a{color:var(--accent)}
 
 <header>
   <h1>CTV ORL tumoraux et ganglionnaires</h1>
-  <span class="meta">Head Neck CBCT CT · patient 123 · 1 × 1 × 3 mm · CTV côté gauche du patient · Lapeyre 2005 + Grégoire 2014</span>
+  <span class="meta">Head Neck CBCT CT · patient 123 · 1 × 1 × 3 mm · CTV des deux côtés (droit = miroir du gauche) · Lapeyre 2005 + Grégoire 2014</span>
 </header>
+<section class="case" id="case" hidden></section>
 
 <div class="app">
   <div class="views" id="views">
@@ -115,7 +120,7 @@ footer a{color:var(--accent)}
     </section>
     <section>
       <h2>Structures (<span id="nvis"></span>)</h2>
-      <div class="seg" id="groups" style="margin-bottom:6px"><button aria-pressed="true" data-g="*">Tous</button><button aria-pressed="false" data-g="T">Tumoraux</button><button aria-pressed="false" data-g="N">Ganglionnaires</button></div>
+      <div class="seg" id="groups" style="margin-bottom:6px"><button aria-pressed="true" data-g="*">Tous</button><button aria-pressed="false" data-g="C" hidden>Composites</button><button aria-pressed="false" data-g="T">Tumoraux</button><button aria-pressed="false" data-g="N">Ganglionnaires</button></div>
       <div class="tools"><button class="btn" id="all">Tout afficher</button><button class="btn" id="none">Tout masquer</button><button class="btn" id="here">Coupe courante</button></div>
       <ul class="list" id="list"></ul>
     </section>
@@ -171,12 +176,47 @@ const has=(st,x,y,z)=>{ if(st.full) return st.m[IDX(x,y,z)]===1; if(!st.m) retur
   return x>=b[0]&&x<=b[1]&&y>=b[2]&&y<=b[3]&&z>=b[4]&&z<=b[5]&&st.m[((z-b[4])*st.h+(y-b[2]))*st.w+(x-b[0])]===1;};
 const growBox=(st,x,y,z)=>{const b=st.b;if(x<b[0])b[0]=x;if(x>b[1])b[1]=x;if(y<b[2])b[2]=y;if(y>b[3])b[3]=y;if(z<b[4])b[4]=z;if(z>b[5])b[5]=z;};
 
-const S = meta.structs.map(s=>{
+// ---- côté droit : copie en miroir des structures latérales (tracées à gauche) ----
+const MIRROR=219; // x' = MIRROR - x : ligne médiane entre x = 109 et x = 110
+const isMedian=s=>s.bbox[0]<105; // palais dur, sinus sphénoïdal, voile, Ia, VIa, VIb
+function mirrorMask(s){const mk=unpack(s.bbox,s.bits),{w,h}=mk,dz=s.bbox[5]-s.bbox[4]+1,by=new Uint8Array((w*h*dz+7)>>3);
+  for(let z=0;z<dz;z++)for(let y=0;y<h;y++){const o=(z*h+y)*w;for(let x=0;x<w;x++){const i=o+x; if(mk.m[o+w-1-x]) by[i>>3]|=1<<(i&7);}}
+  const [x0,x1,...rest]=s.bbox; return {bbox:[MIRROR-x1,MIRROR-x0,...rest],bits:bytesToB64(by)};}
+const RAW=meta.structs.flatMap(s=>isMedian(s)?[s]:[
+  {...s,name:s.name+' gauche'},
+  {...s,...mirrorMask(s),id:s.id+'_d',name:s.name+' droit',center:[MIRROR-s.center[0],s.center[1],s.center[2]]}]);
+const S = RAW.map(s=>{
   const rgb=[1,3,5].map(i=>parseInt(s.color.slice(i,i+2),16));
   const st={...s,rgb,on:true,orig:{bbox:s.bbox,bits:s.bits},edited:false,dirty:false,saving:false,stamp:0};
   setMask(st,unpack(s.bbox,s.bits)); return st;});
 const byId=Object.fromEntries(S.map(s=>[s.id,s]));
+
+// ---- volumes composites transmis par RCP ORL de poche (?ctv_p_br=…&ctv_n_br=…&cas=…) ----
+const Q=new URLSearchParams(location.search);
+// « id_g » / « id_d » désignent le côté ; une structure médiane est acceptée avec ou sans suffixe
+const resolveRef=r=>{ if(byId[r]) return byId[r]; const m=r.match(/^(.*)_(g|d)$/); return m&&byId[m[1]]&&(m[2]==='g'||isMedian(byId[m[1]]))?byId[m[1]]:null; };
+const COMPOSITES=[
+  {key:'ctv_p_br', id:'CTV_P_BR', name:'CTV_P_BR · CTV T bas risque', color:'#ff5fa2'},
+  {key:'ctv_n_br', id:'CTV_N_BR', name:'CTV_N_BR · CTV N bas risque', color:'#ffd23f'},
+];
+const comps=[], unknownRefs=[];
+for(const c of COMPOSITES){
+  const parts=[];
+  for(const r of (Q.get(c.key)||'').split(',').map(x=>x.trim()).filter(Boolean)){
+    const st=resolveRef(r); if(!st) unknownRefs.push(r); else if(!parts.includes(st)) parts.push(st); }
+  if(parts.length) comps.push({g:'C',id:c.id,name:c.name,color:c.color,rgb:[1,3,5].map(i=>parseInt(c.color.slice(i,i+2),16)),
+    composite:true,parts,on:true,edited:false,dirty:false,saving:false,stamp:0,b:[NX,-1,NY,-1,NZ,-1]});
+}
+// somme des sous-CTV, recalculée quand un sous-CTV est modifié
+function refreshComposites(){ for(const c of comps){ const f=new Uint8Array(N);
+  for(const p of c.parts){ const b=p.b; if(!b||b[1]<b[0]) continue;
+    for(let z=b[4];z<=b[5];z++)for(let y=b[2];y<=b[3];y++)for(let x=b[0];x<=b[1];x++) if(has(p,x,y,z)) f[IDX(x,y,z)]=1; }
+  c.m=f; c.full=true; c.w=NX; c.h=NY; c.b=tightBox(c)||[NX,-1,NY,-1,NZ,-1]; } }
+refreshComposites();
+S.unshift(...comps);
+if(comps.length){ S.forEach(st=>st.on=!!st.composite); }
 let pos = {x:byId.amygdale?.center[0]??NX>>1, y:byId.amygdale?.center[1]??NY>>1, z:25};
+if(comps.length&&comps[0].b[1]>=comps[0].b[0]){const b=comps[0].b; pos={x:(b[0]+b[1])>>1,y:(b[2]+b[3])>>1,z:(b[4]+b[5])>>1};}
 let opacity=.25, showC=true, showX=true, hotId=null;
 
 // ---- état d'édition ----
@@ -308,7 +348,7 @@ let db=null, store=null, saveTimers={};
 const STANDALONE = !(window.claude && typeof window.claude.use==='function');
 const stat=document.getElementById('estatus');
 function setStatus(txt,cls){stat.textContent=txt; stat.className='status'+(cls?' '+cls:'');}
-function markDirty(st){ st.dirty=true; st.edited=true; refreshList();
+function markDirty(st){ st.dirty=true; st.edited=true; refreshComposites(); refreshList();
   if(!store){ setStatus('Modifications gardées sur cette page seulement : l\'enregistrement n\'est pas disponible ici.','dirty'); return; }
   setStatus(`${st.name} : enregistrement…`,'dirty');
   clearTimeout(saveTimers[st.id]); saveTimers[st.id]=setTimeout(()=>save(st),1200); }
@@ -326,7 +366,7 @@ async function save(st){
 }
 async function resetStruct(st){
   setMask(st,unpack(st.orig.bbox,st.orig.bits)); st.edited=false; st.dirty=false; ED.undo=ED.undo.filter(k=>k.st!==st);
-  clearTimeout(saveTimers[st.id]); drawAll(); updEdit();
+  clearTimeout(saveTimers[st.id]); refreshComposites(); drawAll(); updEdit();
   if(store){ try{ await store.del(st.id); setStatus(`${st.name} : contour initial rétabli.`);}catch(e){ setStatus('Le contour initial n\'a pas pu être rétabli pour tout le monde.','err'); } }
 }
 function applyRemote(id,data){ const st=byId[id]; if(!st||st.dirty||st.saving) return; if(data&&data.stamp===st.stamp) return;
@@ -346,16 +386,16 @@ op.oninput=()=>{opacity=op.value/100;opv.textContent=op.value+' %';drawAll();}; 
 document.getElementById('cont').onchange=e=>{showC=e.target.checked;drawAll();};
 document.getElementById('cross').onchange=e=>{showX=e.target.checked;drawAll();};
 const list=document.getElementById('list');
-const GN={T:'CTV tumoraux · Lapeyre 2005',N:'CTV ganglionnaires · Grégoire 2014'};let lastG=null;
+const GN={C:'Volumes composites du cas',T:'CTV tumoraux · Lapeyre 2005',N:'CTV ganglionnaires · Grégoire 2014'};let lastG=null;
 const sel=document.getElementById('estruct');
 S.forEach(st=>{
   if(st.g!==lastG){const h=document.createElement('li');h.className='grp';h.textContent=GN[st.g];list.appendChild(h);
-    const og=document.createElement('optgroup');og.label=GN[st.g];sel.appendChild(og);lastG=st.g;}
-  const o=document.createElement('option');o.value=st.id;o.textContent=st.name;sel.lastChild.appendChild(o);
+    if(!st.composite){const og=document.createElement('optgroup');og.label=GN[st.g];sel.appendChild(og);} lastG=st.g;}
+  if(!st.composite){const o=document.createElement('option');o.value=st.id;o.textContent=st.name;sel.lastChild.appendChild(o);}
   const li=document.createElement('li'); st.li=li;
-  li.innerHTML=`<input type="checkbox" id="cb-${st.id}" checked aria-label="Afficher ${st.name}"><span class="sw" style="background:${st.color}"></span><button class="nm" title="${st.name}">${st.name.replace(/^CTV /,'')}<span class="mod" hidden>modifié</span></button><span class="zr"></span>`;
+  li.innerHTML=`<input type="checkbox" id="cb-${st.id}" ${st.on?'checked':''} aria-label="Afficher ${st.name}"><span class="sw" style="background:${st.color}"></span><button class="nm" title="${st.name}">${st.name.replace(/^CTV /,'')}<span class="mod" hidden>modifié</span></button><span class="zr"></span>`;
   li.querySelector('input').onchange=e=>{st.on=e.target.checked;drawAll();};
-  li.querySelector('.nm').onclick=()=>{ if(ED.on) selectStruct(st); const bb=st.b; if(bb&&bb[1]>=bb[0]){pos.x=(bb[0]+bb[1])>>1;pos.y=(bb[2]+bb[3])>>1;pos.z=(bb[4]+bb[5])>>1;} st.on=true; li.querySelector('input').checked=true; drawAll();};
+  li.querySelector('.nm').onclick=()=>{ if(ED.on&&!st.composite) selectStruct(st); const bb=st.b; if(bb&&bb[1]>=bb[0]){pos.x=(bb[0]+bb[1])>>1;pos.y=(bb[2]+bb[3])>>1;pos.z=(bb[4]+bb[5])>>1;} st.on=true; li.querySelector('input').checked=true; drawAll();};
   li.onmouseenter=()=>{hotId=st.id;drawAll();}; li.onmouseleave=()=>{hotId=null;drawAll();};
   list.appendChild(li);
 });
@@ -366,6 +406,7 @@ function refreshList(){let n=0;S.forEach(st=>{const b=st.b, ok=b&&b[5]>=b[4], he
 const setAll=f=>{S.forEach(st=>{st.on=f(st);st.li.querySelector('input').checked=st.on;});drawAll();};
 document.getElementById('all').onclick=()=>setAll(()=>true);
 const gb=document.getElementById('groups');
+if(comps.length) gb.querySelector('[data-g=C]').hidden=false;
 [...gb.children].forEach(b=>b.onclick=()=>{[...gb.children].forEach(x=>x.setAttribute('aria-pressed',x===b));const g=b.dataset.g;setAll(st=>g==='*'||st.g===g);});
 document.getElementById('none').onclick=()=>setAll(()=>false);
 document.getElementById('here').onclick=()=>setAll(st=>{const b=st.b;return b&&pos.z>=b[4]&&pos.z<=b[5];});
@@ -398,6 +439,16 @@ document.addEventListener('keydown',e=>{ if(!ED.on||e.target.closest('select,inp
   else if(e.key==='p'||e.key==='P'){ED.tool='paint';updEdit();} else if(e.key==='g'||e.key==='G'){ED.tool='erase';updEdit();}
   else if(e.key==='['){ED.r=Math.max(1,ED.r-1);$('erad').value=ED.r;updEdit();} else if(e.key===']'){ED.r=Math.min(12,ED.r+1);$('erad').value=ED.r;updEdit();}
   if(ED.hover) draw(ED.hover.vw);});
+// ---- bandeau du cas transmis ----
+if(Q.has('cas')||comps.length||unknownRefs.length){
+  const box=$('case'), esc=t=>t.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  box.innerHTML=`<div><b>Cas transmis par RCP ORL de poche</b>${Q.get('cas')?' · '+esc(Q.get('cas')):''}</div>`+
+    (comps.length?comps.map(c=>`<div class="parts"><span style="color:${c.color}">${c.id}</span> = ${c.parts.map(p=>esc(p.name.replace(/^CTV /,''))).join(' + ')}</div>`).join('')
+      :'<div class="parts">Aucun volume composite pour ce cas : atlas complet affiché.</div>')+
+    (unknownRefs.length?`<div class="warn">Structures inconnues ignorées : ${unknownRefs.map(esc).join(', ')}</div>`:'')+
+    '<div class="parts">Les sous-CTV restent affichables dans la liste. Côté droit : copie en miroir des structures tracées à gauche.</div>';
+  box.hidden=false;
+}
 updEdit(); drawAll();
 
 // ---- stockage partagé : chargement des contours modifiés ----
@@ -412,7 +463,7 @@ async function importMasks(file){ try{ const j=JSON.parse(await file.text()); if
     let n=0; for(const s of j.structs||[]){ const st=byId[s.id]; if(!st) continue;
       if(s.bbox) setMask(st,unpack(s.bbox,s.bits)); else { st.m=new Uint8Array(N); st.full=true; st.b=[NX,-1,NY,-1,NZ,-1]; }
       st.edited=true; n++; if(store) await store.save(st.id,{bbox:s.bbox,bits:s.bits||'',stamp:Date.now()}); }
-    drawAll(); setStatus(`${n} contour(s) importé(s).`); }
+    refreshComposites(); drawAll(); setStatus(`${n} contour(s) importé(s).`); }
   catch(e){ setStatus('Ce fichier n\'est pas un export de contours de cette appli.','err'); } }
 if(STANDALONE){
   const box=document.createElement('div'); box.className='tools';
@@ -422,7 +473,7 @@ if(STANDALONE){
   try{ for(const st of S){ const raw=localStorage.getItem(KEY+st.id); if(raw) applyRemote(st.id,JSON.parse(raw)); }
        setStatus('Les contours modifiés sont gardés dans ce navigateur. Exporte-les pour les conserver ailleurs ou les partager.'); }
   catch(e){ store=null; setStatus('Le navigateur bloque le stockage local : exporte tes contours avant de fermer la page.','dirty'); }
-  drawAll();
+  refreshComposites(); drawAll();
 } else claude.use('db').then(async d=>{
   if(!d){ setStatus('L\'enregistrement n\'est pas disponible dans cette vue : les modifications resteront sur cette page.','dirty'); return; }
   db=d; store={ save:(id,data)=>db.collection('masks').doc(id).set(data), del:id=>db.collection('masks').doc(id).delete() };
@@ -432,7 +483,7 @@ if(STANDALONE){
       if(ch.type==='removed'){const st=byId[ch.doc.id]; if(st&&!st.dirty&&!st.saving){setMask(st,unpack(st.orig.bbox,st.orig.bits)); st.edited=false; st.stamp=0;} }
       else if(!ch.doc.metadata.hasPendingWrites) applyRemote(ch.doc.id,ch.doc.data());
     }
-    drawAll();
+    refreshComposites(); drawAll();
   },err=>{ setStatus('La synchronisation des contours s\'est interrompue. Rechargez la page pour la reprendre.','err'); });
 });
 })().catch(e=>{const l=document.getElementById('loading'); if(l) l.textContent='Le scanner n\'a pas pu être chargé : '+e.message;});
