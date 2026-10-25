@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>CTV ORL Lapeyre · patient 123</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : console de relecture radiologique — grande vue axiale, deux vues de référence, panneau des structures à droite */
+:root{
+  --bg:#0d1114; --panel:#151b20; --line:#25303a; --fg:#dfe6ea; --muted:#8a99a5; --accent:#5fd0c4; --warn:#f2b84b; --bad:#ef6b5e;
+  --f-ui:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:16px 28px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin-bottom:14px}
+h1{font-size:1.45rem;font-weight:600;margin:0;letter-spacing:.01em;text-wrap:balance}
+.meta{font-family:var(--f-data);font-size:.78rem;color:var(--muted)}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:900px){.app{grid-template-columns:minmax(0,1fr)}}
+.views{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px}
+@media (max-width:620px){.views{grid-template-columns:minmax(0,1fr)}}
+.side{display:grid;gap:12px;align-content:start}
+.view{background:#000;border:1px solid var(--line);border-radius:4px;position:relative;min-width:0}
+.view.main{grid-row:span 2}
+.view canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:none}
+.vhead{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line);font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.vhead b{font-family:var(--f-data);font-weight:500;color:var(--fg);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums}
+.vfoot{padding:6px 10px;background:var(--panel);border-top:1px solid var(--line)}
+.orient{position:absolute;font-family:var(--f-data);font-size:.72rem;color:var(--accent);pointer-events:none;opacity:.85}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.tip{position:fixed;pointer-events:none;background:rgba(13,17,20,.92);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:.8rem;z-index:5;max-width:260px}
+.tip .hu{font-family:var(--f-data);color:var(--muted);font-size:.72rem}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:12px;display:grid;gap:14px;min-width:0}
+aside h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:0 0 6px;font-weight:500}
+.seg{display:flex;flex-wrap:wrap;gap:4px}
+.seg button,.btn{font:inherit;font-size:.82rem;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:4px 9px;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);color:#06201d;border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wl{font-family:var(--f-data);font-size:.74rem;color:var(--muted);margin-top:4px}
+.row{display:flex;align-items:center;gap:8px;font-size:.85rem}
+.row label{flex:1}
+ul.list{list-style:none;margin:0;padding:0;display:grid;gap:1px;max-height:52vh;overflow:auto}
+ul.list li{display:grid;grid-template-columns:auto 12px minmax(0,1fr) auto;align-items:center;gap:8px;padding:3px 4px;border-radius:3px}
+ul.list li:hover,ul.list li.hot{background:#1e272e}
+ul.list li.here .nm{color:var(--fg)}
+ul.list li.grp{display:block;padding:8px 4px 3px;font-size:.72rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);background:none}
+ul.list li:not(.here) .nm{color:var(--muted)}
+.sw{width:12px;height:12px;border-radius:2px}
+.nm{font-size:.84rem;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:none;border:0;color:inherit;font-family:inherit;text-align:left;padding:0}
+.zr{font-family:var(--f-data);font-size:.68rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.tools{display:flex;gap:6px;flex-wrap:wrap}
+footer{margin-top:22px;color:var(--muted);font-size:.8rem;max-width:80ch;display:grid;gap:6px}
+footer a{color:var(--accent)}
+.loading{padding:60px 20px;text-align:center;color:var(--muted)}
+.edit{border:1px solid var(--line);border-radius:4px;padding:10px;display:grid;gap:8px}
+.edit.on{border-color:var(--warn)}
+.edit select{font:inherit;font-size:.84rem;width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:4px}
+.status{font-family:var(--f-data);font-size:.72rem;color:var(--muted)}
+.status.dirty{color:var(--warn)} .status.err{color:var(--bad)}
+.btn[disabled],.seg button[disabled]{opacity:.45;cursor:default}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
+.mod{font-family:var(--f-data);font-size:.62rem;color:var(--warn);margin-left:6px}
+.hint{font-size:.76rem;color:var(--muted)}
+.view.editing canvas{cursor:none}
+</style>
+<style>*,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}body{margin:0}</style>
+</head>
+<body>
+
+
+<header>
+  <h1>CTV ORL tumoraux et ganglionnaires</h1>
+  <span class="meta">Head Neck CBCT CT · patient 123 · 1 × 1 × 3 mm · CTV côté gauche du patient · Lapeyre 2005 + Grégoire 2014</span>
+</header>
+
+<div class="app">
+  <div class="views" id="views">
+    <div class="loading" id="loading">Chargement du scanner…</div>
+  </div>
+  <aside>
+    <section>
+      <h2>Fenêtrage</h2>
+      <div class="seg" id="presets"></div>
+      <div class="wl" id="wl"></div>
+    </section>
+    <section>
+      <h2>Affichage des CTV</h2>
+      <div class="row"><label for="op">Opacité du remplissage</label><span class="zr" id="opv"></span></div>
+      <input type="range" id="op" min="0" max="80" value="25">
+      <div class="row"><label for="cont">Contours</label><input type="checkbox" id="cont" checked></div>
+      <div class="row"><label for="cross">Réticule</label><input type="checkbox" id="cross" checked></div>
+    </section>
+    <section class="edit" id="edit">
+      <h2 style="margin:0">Édition des contours</h2>
+      <div class="row"><label for="emode">Mode édition</label><input type="checkbox" id="emode"></div>
+      <label class="hint" for="estruct">Structure à modifier</label>
+      <select id="estruct"></select>
+      <div class="seg" id="etool"><button aria-pressed="true" data-t="paint">Pinceau</button><button aria-pressed="false" data-t="erase">Gomme</button></div>
+      <div class="row"><label for="erad">Rayon du pinceau</label><span class="zr" id="eradv"></span></div>
+      <input type="range" id="erad" min="1" max="12" value="3">
+      <div class="row"><label for="esoft">Ne pas peindre l'air ni l'os</label><input type="checkbox" id="esoft" checked></div>
+      <div class="tools">
+        <button class="btn" id="eundo" disabled>Annuler</button>
+        <button class="btn" id="ecopyup" title="Recopier ici le contour de la coupe axiale au-dessus">Copier coupe sup.</button>
+        <button class="btn" id="ecopydn" title="Recopier ici le contour de la coupe axiale en dessous">Copier coupe inf.</button>
+        <button class="btn" id="eclear">Vider la coupe</button>
+      </div>
+      <div class="tools"><button class="btn danger" id="ereset">Revenir au contour initial</button><span id="ereset-confirm" hidden><button class="btn danger" id="ereset-yes">Confirmer</button> <button class="btn" id="ereset-no">Garder</button></span></div>
+      <div class="status" id="estatus">Les modifications sont enregistrées automatiquement après chaque tracé.</div>
+      <div class="hint">Peindre dans une vue modifie la coupe affichée. Raccourcis : P pinceau, G gomme, [ et ] rayon, Ctrl+Z annuler.</div>
+    </section>
+    <section>
+      <h2>Structures (<span id="nvis"></span>)</h2>
+      <div class="seg" id="groups" style="margin-bottom:6px"><button aria-pressed="true" data-g="*">Tous</button><button aria-pressed="false" data-g="T">Tumoraux</button><button aria-pressed="false" data-g="N">Ganglionnaires</button></div>
+      <div class="tools"><button class="btn" id="all">Tout afficher</button><button class="btn" id="none">Tout masquer</button><button class="btn" id="here">Coupe courante</button></div>
+      <ul class="list" id="list"></ul>
+    </section>
+  </aside>
+</div>
+
+<footer>
+  <div>Les contours modifiés sont gardés dans le navigateur ; « Exporter les contours » les enregistre dans un fichier JSON que l'on peut réimporter. La mention « modifié » les signale dans la liste.</div>
+  <div>Cliquer sur un nom place les trois vues au centre de la structure. Molette ou curseur pour changer de coupe, clic dans une vue pour déplacer le réticule. Survoler l'image affiche les structures sous le pointeur.</div>
+  <div>CTV tumoraux : « CTV structures » péritumoraux de Lapeyre M. et al. (GORTEC), <i>Cancer/Radiothérapie</i> 2005;9:261–270, limites radio-anatomiques du texte (bord supérieur de C1 entre cavum et oropharynx, os hyoïde pour la paroi postérieure, la base de langue et les espaces rétro- et parapharyngé, jonction pilier antérieur-langue entre langue mobile et base de langue, sangle mylo-hyoïdienne pour le plancher, buccinateur pour la joue). Chaque CTV structure est dessiné seul : le CTV global d'un patient en additionne plusieurs selon la sous-localisation (tableaux 1 et 2). CTV ganglionnaires : niveaux de Grégoire V. et al., <i>Radiotherapy and Oncology</i> 2014;110:172–181 (consensus DAHANCA, EORTC, HKNPCSG, NCIC CTG, NCRI, RTOG, TROG), limites des tableaux 2 à 9. Le champ s'arrête au cartilage cricoïde : les niveaux IVa, IVb, Vc et la majeure partie de VIb sont hors champ. Délimitation manuelle sur coupes clés puis interpolation. Contours indicatifs, non validés cliniquement. Les intensités du jeu de données sont normalisées (0–255) : les valeurs HU affichées sont des estimations calibrées sur la graisse et les tissus mous, et le fenêtrage abdominal correspond à W 400 / L 40 HU estimés.</div>
+  <div>Images : « Head Neck CBCT CT datasets », Huazhong University of Science and Technology, Zenodo 2024, <a href="https://doi.org/10.5281/zenodo.13231287" target="_blank" rel="noopener">doi:10.5281/zenodo.13231287</a>, licence <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>. Images modifiées (recadrage, superposition des contours).</div>
+</footer>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(async function(){
+const toHU = v => Math.round(-100 + 26.4*(v-71));
+const fromHU = h => 71 + (h+100)/26.4;
+const AIR=60, BONE=100;
+const PRESETS = [
+  {id:'abdo', name:'Abdominal', W:400, L:40},
+  {id:'mou',  name:'Tissus mous ORL', W:350, L:60},
+  {id:'os',   name:'Os', W:2000, L:400},
+  {id:'large',name:'Large', W:4000, L:500},
+];
+let preset = PRESETS[0];
+const [meta, buf] = await Promise.all([
+  fetch('data/ctv.json').then(r=>r.json()),
+  fetch('data/ct.txt').then(r=>r.text())
+]);
+const [NX,NY,NZ] = meta.dims, SZ = meta.spacing[2], N=NX*NY*NZ;
+const vol = (()=>{const s=atob(buf.trim()),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;})();
+const IDX=(x,y,z)=>(z*NY+y)*NX+x;
+const V = (x,y,z) => vol[IDX(x,y,z)];
+
+// ---- masques : boîte englobante + bits ----
+const b64ToBytes=s=>{const r=atob(s),b=new Uint8Array(r.length);for(let i=0;i<r.length;i++)b[i]=r.charCodeAt(i);return b;};
+const bytesToB64=b=>{let s='';for(let i=0;i<b.length;i+=0x8000)s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(s);};
+function unpack(bbox,bits){const [x0,x1,y0,y1,z0,z1]=bbox,w=x1-x0+1,h=y1-y0+1,dz=z1-z0+1,by=b64ToBytes(bits),m=new Uint8Array(w*h*dz);
+  for(let i=0;i<m.length;i++)m[i]=(by[i>>3]>>(i&7))&1; return {b:[x0,x1,y0,y1,z0,z1],w,h,m};}
+function setMask(st,mk){st.b=mk.b;st.w=mk.w;st.h=mk.h;st.m=mk.m;st.full=false;}
+function toFull(st){if(st.full)return; const f=new Uint8Array(N),[x0,x1,y0,y1,z0,z1]=st.b;
+  if(st.m) for(let z=z0;z<=z1;z++)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++) if(st.m[((z-z0)*st.h+(y-y0))*st.w+(x-x0)]) f[IDX(x,y,z)]=1;
+  st.m=f; st.full=true; st.w=NX; st.h=NY; st.b=st.b||[NX,-1,NY,-1,NZ,-1];}
+function tightBox(st){toFull(st);let x0=NX,x1=-1,y0=NY,y1=-1,z0=NZ,z1=-1;const f=st.m;
+  for(let z=0;z<NZ;z++)for(let y=0;y<NY;y++){const o=(z*NY+y)*NX;for(let x=0;x<NX;x++)if(f[o+x]){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;if(z<z0)z0=z;if(z>z1)z1=z;}}
+  return x1<0?null:[x0,x1,y0,y1,z0,z1];}
+function pack(st){const bb=tightBox(st); if(!bb) return {bbox:null,bits:''};
+  const [x0,x1,y0,y1,z0,z1]=bb,w=x1-x0+1,h=y1-y0+1,n=w*h*(z1-z0+1),by=new Uint8Array((n+7)>>3);let i=0;
+  for(let z=z0;z<=z1;z++)for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++,i++) if(st.m[IDX(x,y,z)]) by[i>>3]|=1<<(i&7);
+  return {bbox:bb,bits:bytesToB64(by)};}
+const has=(st,x,y,z)=>{ if(st.full) return st.m[IDX(x,y,z)]===1; if(!st.m) return false; const b=st.b;
+  return x>=b[0]&&x<=b[1]&&y>=b[2]&&y<=b[3]&&z>=b[4]&&z<=b[5]&&st.m[((z-b[4])*st.h+(y-b[2]))*st.w+(x-b[0])]===1;};
+const growBox=(st,x,y,z)=>{const b=st.b;if(x<b[0])b[0]=x;if(x>b[1])b[1]=x;if(y<b[2])b[2]=y;if(y>b[3])b[3]=y;if(z<b[4])b[4]=z;if(z>b[5])b[5]=z;};
+
+const S = meta.structs.map(s=>{
+  const rgb=[1,3,5].map(i=>parseInt(s.color.slice(i,i+2),16));
+  const st={...s,rgb,on:true,orig:{bbox:s.bbox,bits:s.bits},edited:false,dirty:false,saving:false,stamp:0};
+  setMask(st,unpack(s.bbox,s.bits)); return st;});
+const byId=Object.fromEntries(S.map(s=>[s.id,s]));
+let pos = {x:byId.amygdale?.center[0]??NX>>1, y:byId.amygdale?.center[1]??NY>>1, z:25};
+let opacity=.25, showC=true, showX=true, hotId=null;
+
+// ---- état d'édition ----
+const ED={on:false, st:null, tool:'paint', r:3, soft:true, undo:[], stroke:null, hover:null, canWrite:true};
+
+// ---- vues ----
+const K=3;
+const VIEWS=[
+  {id:'ax', name:'Axiale', main:true, nu:NX, nv:NY, su:1, sv:1, slice:'z', n:NZ, uv:(u,v,s)=>[u,v,s], oriTop:'A',oriBot:'P',oriL:'D',oriR:'G'},
+  {id:'co', name:'Coronale', nu:NX, nv:NZ, su:1, sv:SZ, slice:'y', n:NY, uv:(u,v,s)=>[u,s,NZ-1-v], oriTop:'S',oriBot:'I',oriL:'D',oriR:'G'},
+  {id:'sa', name:'Sagittale', nu:NY, nv:NZ, su:1, sv:SZ, slice:'x', n:NX, uv:(u,v,s)=>[s,u,NZ-1-v], oriTop:'S',oriBot:'I',oriL:'A',oriR:'P'},
+];
+// plage (u,v) de la boîte d'une structure dans une vue, ou null si la coupe est hors boîte
+function range(vw,st,s){const b=st.b; if(!b||b[1]<b[0]) return null;
+  if(vw.id==='ax') return (s<b[4]||s>b[5])?null:[b[0],b[1],b[2],b[3]];
+  if(vw.id==='co') return (s<b[2]||s>b[3])?null:[b[0],b[1],NZ-1-b[5],NZ-1-b[4]];
+  return (s<b[0]||s>b[1])?null:[b[2],b[3],NZ-1-b[5],NZ-1-b[4]];}
+const tip=document.getElementById('tip');
+const wrap=document.getElementById('views'); wrap.innerHTML='';
+for(const vw of VIEWS){
+  const el=document.createElement('div'); el.className='view'+(vw.main?' main':''); vw.el=el;
+  el.innerHTML=`<div class="vhead"><span>${vw.name}</span><b id="lab-${vw.id}"></b></div>
+   <div style="position:relative"><canvas id="cv-${vw.id}"></canvas>
+   <span class="orient" style="top:4px;left:50%;transform:translateX(-50%)">${vw.oriTop}</span>
+   <span class="orient" style="bottom:4px;left:50%;transform:translateX(-50%)">${vw.oriBot}</span>
+   <span class="orient" style="left:6px;top:50%;transform:translateY(-50%)">${vw.oriL}</span>
+   <span class="orient" style="right:6px;top:50%;transform:translateY(-50%)">${vw.oriR}</span></div>
+   <div class="vfoot"><input type="range" id="sl-${vw.id}" min="0" max="${vw.n-1}" aria-label="Coupe ${vw.name.toLowerCase()}"></div>`;
+  wrap.appendChild(el);
+  vw.cv=el.querySelector('canvas'); vw.ctx=vw.cv.getContext('2d');
+  vw.cv.width=Math.round(vw.nu*vw.su*K); vw.cv.height=Math.round(vw.nv*vw.sv*K);
+  vw.off=document.createElement('canvas'); vw.off.width=vw.nu; vw.off.height=vw.nv; vw.octx=vw.off.getContext('2d'); vw.img=vw.octx.createImageData(vw.nu,vw.nv);
+  vw.ov=document.createElement('canvas'); vw.ov.width=vw.nu; vw.ov.height=vw.nv; vw.ovctx=vw.ov.getContext('2d'); vw.ovimg=vw.ovctx.createImageData(vw.nu,vw.nv);
+  vw.sl=el.querySelector('input'); vw.lab=el.querySelector('#lab-'+vw.id);
+  vw.sl.addEventListener('input',()=>{pos[vw.slice]=+vw.sl.value; drawAll();});
+  vw.cv.addEventListener('wheel',e=>{e.preventDefault(); const s=vw.slice; pos[s]=Math.max(0,Math.min(vw.n-1,pos[s]+(e.deltaY>0?-1:1))); drawAll();},{passive:false});
+  const pickUV=e=>{const r=vw.cv.getBoundingClientRect(); return [(e.clientX-r.left)/r.width*vw.nu,(e.clientY-r.top)/r.height*vw.nv];};
+  const pick=e=>{const [fu,fv]=pickUV(e),u=Math.floor(fu),v=Math.floor(fv);
+    if(u<0||v<0||u>=vw.nu||v>=vw.nv) return null; return vw.uv(u,v,pos[vw.slice]);};
+  vw.cv.addEventListener('pointerdown',e=>{
+    if(ED.on&&ED.st){ e.preventDefault(); vw.cv.setPointerCapture(e.pointerId); startStroke(vw); paintAt(vw,pickUV(e)); return; }
+    const p=pick(e); if(!p)return; [pos.x,pos.y,pos.z]=p; drawAll();});
+  vw.cv.addEventListener('pointermove',e=>{
+    const fuv=pickUV(e); ED.hover={vw,fuv};
+    if(ED.on&&ED.st){ if(ED.stroke&&ED.stroke.vw===vw&&e.buttons===1) paintAt(vw,fuv); else draw(vw); tip.hidden=true; return; }
+    const p=pick(e); if(!p){tip.hidden=true;return;}
+    if(e.buttons===1){[pos.x,pos.y,pos.z]=p; drawAll();}
+    const names=S.filter(s=>s.on&&has(s,...p)).map(s=>`<div style="color:${s.color}">${s.name}</div>`).join('');
+    tip.innerHTML=names+`<div class="hu">≈ ${toHU(V(...p))} HU</div>`; tip.hidden=false;
+    tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px';});
+  const end=()=>{ if(ED.stroke&&ED.stroke.vw===vw) endStroke(); };
+  vw.cv.addEventListener('pointerup',end); vw.cv.addEventListener('pointercancel',end);
+  vw.cv.addEventListener('pointerleave',()=>{tip.hidden=true; if(ED.hover&&ED.hover.vw===vw){ED.hover=null; draw(vw);} });
+}
+
+function lut(){const lo=fromHU(preset.L-preset.W/2), hi=fromHU(preset.L+preset.W/2), t=new Uint8Array(256);
+  for(let i=0;i<256;i++){t[i]=Math.max(0,Math.min(255,Math.round((i-lo)/(hi-lo)*255)));} return t;}
+let LUT=lut();
+
+function draw(vw){
+  const s=pos[vw.slice], d=vw.img.data, o=vw.ovimg.data, vis=S.filter(x=>x.on||x===ED.st);
+  for(let v=0;v<vw.nv;v++)for(let u=0;u<vw.nu;u++){const [x,y,z]=vw.uv(u,v,s), i=(v*vw.nu+u)*4, g=LUT[V(x,y,z)]; d[i]=d[i+1]=d[i+2]=g; d[i+3]=255;}
+  o.fill(0);
+  const a=Math.round(opacity*255);
+  // remplissage : la structure active passe devant, puis l'ordre de la liste
+  const order=ED.st?[ED.st,...vis.filter(x=>x!==ED.st)]:vis;
+  if(a>0||ED.st) for(const st of order.slice().reverse()){const R=range(vw,st,s); if(!R) continue;
+    const al = st===ED.st ? Math.max(a,70) : (st.id===hotId?Math.min(255,a+90):a); if(!al) continue;
+    for(let v=R[2];v<=R[3];v++)for(let u=R[0];u<=R[1];u++){ if(!has(st,...vw.uv(u,v,s))) continue; const i=(v*vw.nu+u)*4; o[i]=st.rgb[0];o[i+1]=st.rgb[1];o[i+2]=st.rgb[2];o[i+3]=al; }}
+  vw.octx.putImageData(vw.img,0,0); vw.ovctx.putImageData(vw.ovimg,0,0);
+  const c=vw.ctx, W=vw.cv.width, H=vw.cv.height, pu=W/vw.nu, pv=H/vw.nv;
+  c.imageSmoothingEnabled=true; c.drawImage(vw.off,0,0,W,H);
+  c.imageSmoothingEnabled=false; c.drawImage(vw.ov,0,0,W,H);
+  if(showC||ED.st){
+    for(const st of order){ if(!showC&&st!==ED.st) continue; const R=range(vw,st,s); if(!R) continue;
+      c.strokeStyle=st.color; c.lineWidth=(st.id===hotId||st===ED.st)?3:1.6; c.beginPath(); let any=false;
+      const hs=(uu,vv)=>uu>=0&&vv>=0&&uu<vw.nu&&vv<vw.nv&&has(st,...vw.uv(uu,vv,s));
+      for(let v=R[2];v<=R[3];v++)for(let u=R[0];u<=R[1];u++){
+        if(!hs(u,v)) continue; any=true; const X=u*pu,Y=v*pv;
+        if(!hs(u,v-1)){c.moveTo(X,Y);c.lineTo(X+pu,Y);} if(!hs(u,v+1)){c.moveTo(X,Y+pv);c.lineTo(X+pu,Y+pv);}
+        if(!hs(u-1,v)){c.moveTo(X,Y);c.lineTo(X,Y+pv);} if(!hs(u+1,v)){c.moveTo(X+pu,Y);c.lineTo(X+pu,Y+pv);}
+      }
+      if(any) c.stroke();
+    }
+  }
+  if(showX&&!ED.on){
+    let cu,cv; if(vw.id==='ax'){cu=pos.x;cv=pos.y}else if(vw.id==='co'){cu=pos.x;cv=NZ-1-pos.z}else{cu=pos.y;cv=NZ-1-pos.z}
+    c.strokeStyle='rgba(95,208,196,.55)'; c.lineWidth=1; c.setLineDash([4,4]); c.beginPath();
+    c.moveTo((cu+.5)*pu,0);c.lineTo((cu+.5)*pu,H);c.moveTo(0,(cv+.5)*pv);c.lineTo(W,(cv+.5)*pv);c.stroke(); c.setLineDash([]);
+  }
+  if(ED.on&&ED.st&&ED.hover&&ED.hover.vw===vw){ // curseur du pinceau, rayon en mm
+    const [fu,fv]=ED.hover.fuv; c.strokeStyle=ED.tool==='erase'?'#ef6b5e':'#ffffff'; c.lineWidth=1.5;
+    c.beginPath(); c.ellipse(fu*pu,fv*pv,ED.r*K,ED.r*K,0,0,Math.PI*2); c.stroke();
+  }
+  vw.sl.value=s;
+  vw.lab.textContent = vw.slice==='z' ? `coupe ${s+1}/${NZ} · z ${((s-(NZ-1)/2)*SZ).toFixed(0)} mm` : `${vw.slice} ${s}`;
+}
+function drawAll(){VIEWS.forEach(draw); refreshList();}
+
+// ---- pinceau ----
+function startStroke(vw){ toFull(ED.st); ED.stroke={vw,st:ED.st,changes:new Map()}; }
+function paintAt(vw,[fu,fv]){
+  const st=ED.stroke?.st; if(!st) return; const s=pos[vw.slice], val=ED.tool==='paint'?1:0;
+  const ru=ED.r/vw.su, rv=ED.r/vw.sv;
+  for(let v=Math.floor(fv-rv);v<=Math.ceil(fv+rv);v++)for(let u=Math.floor(fu-ru);u<=Math.ceil(fu+ru);u++){
+    if(u<0||v<0||u>=vw.nu||v>=vw.nv) continue;
+    const du=(u+.5-fu)*vw.su, dv=(v+.5-fv)*vw.sv; if(du*du+dv*dv>ED.r*ED.r) continue;
+    const [x,y,z]=vw.uv(u,v,s), i=IDX(x,y,z);
+    if(val&&ED.soft){const g=vol[i]; if(g<AIR||g>BONE) continue;}
+    if(st.m[i]===val) continue;
+    if(!ED.stroke.changes.has(i)) ED.stroke.changes.set(i,st.m[i]);
+    st.m[i]=val; if(val) growBox(st,x,y,z);
+  }
+  ED.hover={vw,fuv:[fu,fv]}; draw(vw);
+}
+function endStroke(){
+  const k=ED.stroke; ED.stroke=null; if(!k||!k.changes.size){drawAll();return;}
+  ED.undo.push(k); if(ED.undo.length>50) ED.undo.shift();
+  markDirty(k.st); drawAll(); updEdit();
+}
+function undo(){const k=ED.undo.pop(); if(!k) return; for(const [i,old] of k.changes) k.st.m[i]=old; markDirty(k.st); drawAll(); updEdit();}
+function sliceOp(fn){ // opération sur la coupe axiale courante de la structure active
+  const st=ED.st; if(!st) return; toFull(st); const k={vw:VIEWS[0],st,changes:new Map()}, z=pos.z;
+  for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=IDX(x,y,z), nv=fn(x,y,z,i); if(nv===st.m[i]) continue; k.changes.set(i,st.m[i]); st.m[i]=nv; if(nv) growBox(st,x,y,z);}
+  if(k.changes.size){ED.undo.push(k); markDirty(st);} drawAll(); updEdit();}
+
+// ---- enregistrement (db) ----
+let db=null, store=null, saveTimers={};
+const STANDALONE = !(window.claude && typeof window.claude.use==='function');
+const stat=document.getElementById('estatus');
+function setStatus(txt,cls){stat.textContent=txt; stat.className='status'+(cls?' '+cls:'');}
+function markDirty(st){ st.dirty=true; st.edited=true; refreshList();
+  if(!store){ setStatus('Modifications gardées sur cette page seulement : l\'enregistrement n\'est pas disponible ici.','dirty'); return; }
+  setStatus(`${st.name} : enregistrement…`,'dirty');
+  clearTimeout(saveTimers[st.id]); saveTimers[st.id]=setTimeout(()=>save(st),1200); }
+async function save(st){
+  if(st.saving){ clearTimeout(saveTimers[st.id]); saveTimers[st.id]=setTimeout(()=>save(st),800); return; }
+  st.saving=true; st.dirty=false; const p=pack(st); st.stamp=Date.now();
+  try{ await store.save(st.id,{bbox:p.bbox,bits:p.bits,stamp:st.stamp});
+    const t=new Date(st.stamp).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+    if(!S.some(x=>x.dirty)) setStatus(`Enregistré à ${t}.`); }
+  catch(e){ st.dirty=true;
+    if(e&&e.code==='invalid_argument'){ ED.canWrite=false; setStatus('Cette page est en lecture seule pour vous : les modifications ne peuvent pas être enregistrées.','err'); updEdit(); }
+    else if(e&&e.code==='quota_exceeded') setStatus('Espace de stockage plein : impossible d\'enregistrer ce contour.','err');
+    else setStatus(`${st.name} n'a pas pu être enregistré. Nouvel essai au prochain tracé.`,'err'); }
+  finally{ st.saving=false; }
+}
+async function resetStruct(st){
+  setMask(st,unpack(st.orig.bbox,st.orig.bits)); st.edited=false; st.dirty=false; ED.undo=ED.undo.filter(k=>k.st!==st);
+  clearTimeout(saveTimers[st.id]); drawAll(); updEdit();
+  if(store){ try{ await store.del(st.id); setStatus(`${st.name} : contour initial rétabli.`);}catch(e){ setStatus('Le contour initial n\'a pas pu être rétabli pour tout le monde.','err'); } }
+}
+function applyRemote(id,data){ const st=byId[id]; if(!st||st.dirty||st.saving) return; if(data&&data.stamp===st.stamp) return;
+  if(!data||!data.bbox){ // contour vidé
+    if(data&&data.bbox===null){ st.m=new Uint8Array(N); st.full=true; st.b=[NX,-1,NY,-1,NZ,-1]; st.edited=true; st.stamp=data.stamp; }
+    return; }
+  setMask(st,unpack(data.bbox,data.bits)); st.edited=true; st.stamp=data.stamp; }
+
+// ---- panneau ----
+const pre=document.getElementById('presets');
+PRESETS.forEach(p=>{const b=document.createElement('button');b.textContent=p.name;b.setAttribute('aria-pressed',p===preset);
+  b.onclick=()=>{preset=p;LUT=lut();[...pre.children].forEach(x=>x.setAttribute('aria-pressed',x===b));wlText();drawAll();};pre.appendChild(b);});
+const wlText=()=>document.getElementById('wl').textContent=`W ${preset.W} / L ${preset.L} HU estimés`;
+wlText();
+const op=document.getElementById('op'), opv=document.getElementById('opv');
+op.oninput=()=>{opacity=op.value/100;opv.textContent=op.value+' %';drawAll();}; opv.textContent=op.value+' %';
+document.getElementById('cont').onchange=e=>{showC=e.target.checked;drawAll();};
+document.getElementById('cross').onchange=e=>{showX=e.target.checked;drawAll();};
+const list=document.getElementById('list');
+const GN={T:'CTV tumoraux · Lapeyre 2005',N:'CTV ganglionnaires · Grégoire 2014'};let lastG=null;
+const sel=document.getElementById('estruct');
+S.forEach(st=>{
+  if(st.g!==lastG){const h=document.createElement('li');h.className='grp';h.textContent=GN[st.g];list.appendChild(h);
+    const og=document.createElement('optgroup');og.label=GN[st.g];sel.appendChild(og);lastG=st.g;}
+  const o=document.createElement('option');o.value=st.id;o.textContent=st.name;sel.lastChild.appendChild(o);
+  const li=document.createElement('li'); st.li=li;
+  li.innerHTML=`<input type="checkbox" id="cb-${st.id}" checked aria-label="Afficher ${st.name}"><span class="sw" style="background:${st.color}"></span><button class="nm" title="${st.name}">${st.name.replace(/^CTV /,'')}<span class="mod" hidden>modifié</span></button><span class="zr"></span>`;
+  li.querySelector('input').onchange=e=>{st.on=e.target.checked;drawAll();};
+  li.querySelector('.nm').onclick=()=>{ if(ED.on) selectStruct(st); const bb=st.b; if(bb&&bb[1]>=bb[0]){pos.x=(bb[0]+bb[1])>>1;pos.y=(bb[2]+bb[3])>>1;pos.z=(bb[4]+bb[5])>>1;} st.on=true; li.querySelector('input').checked=true; drawAll();};
+  li.onmouseenter=()=>{hotId=st.id;drawAll();}; li.onmouseleave=()=>{hotId=null;drawAll();};
+  list.appendChild(li);
+});
+function refreshList(){let n=0;S.forEach(st=>{const b=st.b, ok=b&&b[5]>=b[4], here=ok&&pos.z>=b[4]&&pos.z<=b[5];
+  st.li.classList.toggle('here',here); st.li.classList.toggle('hot',st===ED.st); if(st.on)n++;
+  st.li.querySelector('.zr').textContent=ok?`${b[4]+1}–${b[5]+1}`:'vide'; st.li.querySelector('.mod').hidden=!st.edited;});
+  document.getElementById('nvis').textContent=`${n}/${S.length}`;}
+const setAll=f=>{S.forEach(st=>{st.on=f(st);st.li.querySelector('input').checked=st.on;});drawAll();};
+document.getElementById('all').onclick=()=>setAll(()=>true);
+const gb=document.getElementById('groups');
+[...gb.children].forEach(b=>b.onclick=()=>{[...gb.children].forEach(x=>x.setAttribute('aria-pressed',x===b));const g=b.dataset.g;setAll(st=>g==='*'||st.g===g);});
+document.getElementById('none').onclick=()=>setAll(()=>false);
+document.getElementById('here').onclick=()=>setAll(st=>{const b=st.b;return b&&pos.z>=b[4]&&pos.z<=b[5];});
+
+// ---- contrôles d'édition ----
+const $=id=>document.getElementById(id);
+function selectStruct(st){ED.st=st; sel.value=st.id; drawAll(); updEdit();}
+function updEdit(){
+  $('edit').classList.toggle('on',ED.on); VIEWS.forEach(v=>v.el.classList.toggle('editing',ED.on));
+  const dis=!ED.on||!ED.canWrite;
+  ['estruct','erad','esoft','ecopyup','ecopydn','eclear','ereset'].forEach(i=>$(i).disabled=dis);
+  [...$('etool').children].forEach(b=>{b.disabled=dis;b.setAttribute('aria-pressed',b.dataset.t===ED.tool);});
+  $('eundo').disabled=dis||!ED.undo.length; $('eradv').textContent=ED.r+' mm';
+  $('emode').disabled=!ED.canWrite;
+}
+$('emode').onchange=e=>{ED.on=e.target.checked; if(ED.on&&!ED.st) ED.st=byId[sel.value]||S[0]; if(!ED.on) ED.hover=null; if(ED.on){ED.st.on=true;ED.st.li.querySelector('input').checked=true;} updEdit(); drawAll();};
+sel.onchange=()=>selectStruct(byId[sel.value]);
+[...$('etool').children].forEach(b=>b.onclick=()=>{ED.tool=b.dataset.t;updEdit();});
+$('erad').oninput=e=>{ED.r=+e.target.value;updEdit();};
+$('esoft').onchange=e=>{ED.soft=e.target.checked;};
+$('eundo').onclick=undo;
+$('ecopyup').onclick=()=>{ if(pos.z>=NZ-1)return; const st=ED.st; toFull(st); sliceOp((x,y,z,i)=>st.m[IDX(x,y,z+1)]); };
+$('ecopydn').onclick=()=>{ if(pos.z<=0)return; const st=ED.st; toFull(st); sliceOp((x,y,z,i)=>st.m[IDX(x,y,z-1)]); };
+$('eclear').onclick=()=>sliceOp(()=>0);
+$('ereset').onclick=()=>{$('ereset').hidden=true;$('ereset-confirm').hidden=false;};
+$('ereset-no').onclick=()=>{$('ereset').hidden=false;$('ereset-confirm').hidden=true;};
+$('ereset-yes').onclick=()=>{$('ereset').hidden=false;$('ereset-confirm').hidden=true; if(ED.st) resetStruct(ED.st);};
+document.addEventListener('keydown',e=>{ if(!ED.on||e.target.closest('select,input[type=range]')&&!(e.ctrlKey||e.metaKey)) return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo();}
+  else if(e.key==='p'||e.key==='P'){ED.tool='paint';updEdit();} else if(e.key==='g'||e.key==='G'){ED.tool='erase';updEdit();}
+  else if(e.key==='['){ED.r=Math.max(1,ED.r-1);$('erad').value=ED.r;updEdit();} else if(e.key===']'){ED.r=Math.min(12,ED.r+1);$('erad').value=ED.r;updEdit();}
+  if(ED.hover) draw(ED.hover.vw);});
+updEdit(); drawAll();
+
+// ---- stockage partagé : chargement des contours modifiés ----
+// ---- export / import (version autonome) ----
+const KEY='contourage:masks:';
+function exportMasks(){ const out={format:'contourage-masks-v1',dims:meta.dims,spacing:meta.spacing,exported:new Date().toISOString(),structs:[]};
+  for(const st of S){ if(!st.edited) continue; const p=pack(st); out.structs.push({id:st.id,name:st.name,bbox:p.bbox,bits:p.bits}); }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));
+  a.download='contours_modifies.json'; document.body.appendChild(a); a.click(); a.remove();
+  setStatus(out.structs.length?`${out.structs.length} contour(s) modifié(s) exporté(s).`:'Aucun contour modifié à exporter : le fichier est vide.'); }
+async function importMasks(file){ try{ const j=JSON.parse(await file.text()); if(j.format!=='contourage-masks-v1') throw new Error('format');
+    let n=0; for(const s of j.structs||[]){ const st=byId[s.id]; if(!st) continue;
+      if(s.bbox) setMask(st,unpack(s.bbox,s.bits)); else { st.m=new Uint8Array(N); st.full=true; st.b=[NX,-1,NY,-1,NZ,-1]; }
+      st.edited=true; n++; if(store) await store.save(st.id,{bbox:s.bbox,bits:s.bits||'',stamp:Date.now()}); }
+    drawAll(); setStatus(`${n} contour(s) importé(s).`); }
+  catch(e){ setStatus('Ce fichier n\'est pas un export de contours de cette appli.','err'); } }
+if(STANDALONE){
+  const box=document.createElement('div'); box.className='tools';
+  box.innerHTML='<button class="btn" id="eexport">Exporter les contours</button><label class="btn" for="eimport">Importer…</label><input type="file" id="eimport" accept="application/json,.json" hidden>';
+  $('estatus').before(box); $('eexport').onclick=exportMasks; $('eimport').onchange=e=>{const f=e.target.files[0]; if(f) importMasks(f); e.target.value='';};
+  store={ save:async(id,d)=>{ localStorage.setItem(KEY+id,JSON.stringify(d)); }, del:async id=>{ localStorage.removeItem(KEY+id); } };
+  try{ for(const st of S){ const raw=localStorage.getItem(KEY+st.id); if(raw) applyRemote(st.id,JSON.parse(raw)); }
+       setStatus('Les contours modifiés sont gardés dans ce navigateur. Exporte-les pour les conserver ailleurs ou les partager.'); }
+  catch(e){ store=null; setStatus('Le navigateur bloque le stockage local : exporte tes contours avant de fermer la page.','dirty'); }
+  drawAll();
+} else claude.use('db').then(async d=>{
+  if(!d){ setStatus('L\'enregistrement n\'est pas disponible dans cette vue : les modifications resteront sur cette page.','dirty'); return; }
+  db=d; store={ save:(id,data)=>db.collection('masks').doc(id).set(data), del:id=>db.collection('masks').doc(id).delete() };
+  try{ const u=await claude.use('user'); const w=u?await u.can('data.write'):null; if(w===false){ED.canWrite=false; setStatus('Lecture seule : vous pouvez consulter les contours modifiés mais pas les changer.'); updEdit();} }catch(e){}
+  db.collection('masks').onSnapshot(snap=>{
+    for(const ch of snap.docChanges()){
+      if(ch.type==='removed'){const st=byId[ch.doc.id]; if(st&&!st.dirty&&!st.saving){setMask(st,unpack(st.orig.bbox,st.orig.bits)); st.edited=false; st.stamp=0;} }
+      else if(!ch.doc.metadata.hasPendingWrites) applyRemote(ch.doc.id,ch.doc.data());
+    }
+    drawAll();
+  },err=>{ setStatus('La synchronisation des contours s\'est interrompue. Rechargez la page pour la reprendre.','err'); });
+});
+})().catch(e=>{const l=document.getElementById('loading'); if(l) l.textContent='Le scanner n\'a pas pu être chargé : '+e.message;});
+</script>
+
+</body>
+</html>
