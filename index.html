@@ -114,6 +114,7 @@ footer a{color:var(--accent)}
         <button class="btn" id="ecopydn" title="Recopier ici le contour de la coupe axiale en dessous">Copier coupe inf.</button>
         <button class="btn" id="eclear">Vider la coupe</button>
       </div>
+      <div class="tools"><button class="btn danger" id="ewipe" title="Effacer la structure sur toutes les coupes (Ctrl+Z pour annuler)">Effacer toute la structure</button><span id="ewipe-confirm" hidden><button class="btn danger" id="ewipe-yes">Effacer</button> <button class="btn" id="ewipe-no">Garder</button></span></div>
       <div class="tools"><button class="btn danger" id="ereset">Revenir au contour initial</button><span id="ereset-confirm" hidden><button class="btn danger" id="ereset-yes">Confirmer</button> <button class="btn" id="ereset-no">Garder</button></span></div>
       <div class="status" id="estatus">Les modifications sont enregistrées automatiquement après chaque tracé.</div>
       <div class="hint">Peindre dans une vue modifie la coupe affichée. Raccourcis : P pinceau, G gomme, [ et ] rayon, Ctrl+Z annuler.</div>
@@ -345,7 +346,17 @@ function endStroke(){
   ED.undo.push(k); if(ED.undo.length>50) ED.undo.shift();
   markDirty(k.st); drawAll(); updEdit();
 }
-function undo(){const k=ED.undo.pop(); if(!k) return; for(const [i,old] of k.changes) k.st.m[i]=old; markDirty(k.st); drawAll(); updEdit();}
+function undo(){const k=ED.undo.pop(); if(!k) return;
+  for(const [i,old] of k.changes){ k.st.m[i]=old; if(old) growBox(k.st,i%NX,((i/NX)|0)%NY,(i/(NX*NY))|0); }
+  markDirty(k.st); drawAll(); updEdit();}
+// efface la structure active sur toutes les coupes (annulable)
+function wipeStruct(){
+  const st=ED.st; if(!st) return; toFull(st); const k={vw:VIEWS[0],st,changes:new Map()}, b=st.b;
+  for(let z=Math.max(0,b[4]);z<=Math.min(NZ-1,b[5]);z++)for(let y=Math.max(0,b[2]);y<=Math.min(NY-1,b[3]);y++)for(let x=Math.max(0,b[0]);x<=Math.min(NX-1,b[1]);x++){
+    const i=IDX(x,y,z); if(st.m[i]){k.changes.set(i,1); st.m[i]=0;} }
+  st.b=[NX,-1,NY,-1,NZ,-1];
+  if(k.changes.size){ED.undo.push(k); markDirty(st);} drawAll(); updEdit();
+  setStatus(`${st.name} : structure effacée (Ctrl+Z pour annuler).`,'dirty');}
 function sliceOp(fn){ // opération sur la coupe axiale courante de la structure active
   const st=ED.st; if(!st) return; toFull(st); const k={vw:VIEWS[0],st,changes:new Map()}, z=pos.z;
   for(let y=0;y<NY;y++)for(let x=0;x<NX;x++){const i=IDX(x,y,z), nv=fn(x,y,z,i); if(nv===st.m[i]) continue; k.changes.set(i,st.m[i]); st.m[i]=nv; if(nv) growBox(st,x,y,z);}
@@ -426,6 +437,7 @@ function updEdit(){
   $('edit').classList.toggle('on',ED.on); VIEWS.forEach(v=>v.el.classList.toggle('editing',ED.on));
   const dis=!ED.on||!ED.canWrite;
   ['estruct','erad','esoft','ecopyup','ecopydn','eclear','ereset'].forEach(i=>$(i).disabled=dis);
+  $('ewipe').disabled=dis||!ED.st||ED.st.b[1]<ED.st.b[0];
   [...$('etool').children].forEach(b=>{b.disabled=dis;b.setAttribute('aria-pressed',b.dataset.t===ED.tool);});
   $('eundo').disabled=dis||!ED.undo.length; $('eradv').textContent=ED.r+' mm';
   $('emode').disabled=!ED.canWrite;
@@ -439,6 +451,9 @@ $('eundo').onclick=undo;
 $('ecopyup').onclick=()=>{ if(pos.z>=NZ-1)return; const st=ED.st; toFull(st); sliceOp((x,y,z,i)=>st.m[IDX(x,y,z+1)]); };
 $('ecopydn').onclick=()=>{ if(pos.z<=0)return; const st=ED.st; toFull(st); sliceOp((x,y,z,i)=>st.m[IDX(x,y,z-1)]); };
 $('eclear').onclick=()=>sliceOp(()=>0);
+$('ewipe').onclick=()=>{$('ewipe').hidden=true;$('ewipe-confirm').hidden=false;};
+$('ewipe-no').onclick=()=>{$('ewipe').hidden=false;$('ewipe-confirm').hidden=true;};
+$('ewipe-yes').onclick=()=>{$('ewipe').hidden=false;$('ewipe-confirm').hidden=true; wipeStruct();};
 $('ereset').onclick=()=>{$('ereset').hidden=true;$('ereset-confirm').hidden=false;};
 $('ereset-no').onclick=()=>{$('ereset').hidden=false;$('ereset-confirm').hidden=true;};
 $('ereset-yes').onclick=()=>{$('ereset').hidden=false;$('ereset-confirm').hidden=true; if(ED.st) resetStruct(ED.st);};
