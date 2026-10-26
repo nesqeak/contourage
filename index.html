@@ -148,11 +148,14 @@ const PRESETS = [
   {id:'large',name:'Large', W:4000, L:500},
 ];
 let preset = PRESETS[0];
-const [meta, buf, todo] = await Promise.all([
+const optionalJson=(url,fallback)=>fetch(url).then(r=>r.ok?r.json():fallback).catch(()=>fallback);
+const [meta, buf, todo, ref] = await Promise.all([
   fetch('data/ctv.json').then(r=>r.json()),
   fetch('data/ct.txt').then(r=>r.text()),
   // structures citées par RCP ORL de poche mais pas encore contourées : créées vides
-  fetch('data/ctv_a_contourer.json').then(r=>r.ok?r.json():{structs:[]}).catch(()=>({structs:[]}))
+  optionalJson('data/ctv_a_contourer.json',{structs:[]}),
+  // contours de référence corrigés manuellement : remplacent l'atlas et ses copies en miroir
+  optionalJson('data/contours_reference.json',{structs:[]})
 ]);
 const [NX,NY,NZ] = meta.dims, SZ = meta.spacing[2], N=NX*NY*NZ;
 const vol = (()=>{const s=atob(buf.trim()),a=new Uint8Array(s.length);for(let i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a;})();
@@ -197,6 +200,8 @@ const S = RAW.map(s=>{
   const st={...s,rgb,on:true,orig:{bbox:s.bbox,bits:s.bits},edited:false,dirty:false,saving:false,stamp:0};
   setMask(st,maskOf(s.bbox,s.bits)); return st;});
 const byId=Object.fromEntries(S.map(s=>[s.id,s]));
+for(const r of ref.structs||[]){ const st=byId[r.id]; if(!st) continue;
+  setMask(st,maskOf(r.bbox,r.bits)); st.orig={bbox:r.bbox,bits:r.bits}; }
 
 // ---- volumes composites transmis par RCP ORL de poche (?ctv_p_br=…&ctv_n_br=…&cas=…) ----
 const Q=new URLSearchParams(location.search);

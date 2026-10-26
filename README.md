@@ -39,6 +39,7 @@ L'appli peut aussi être servie par GitHub Pages depuis la racine du dépôt.
 | `data/ct.txt` | Volume CT du patient 123, recadré à 230 × 224 × 64 voxels de 1 × 1 × 3 mm, uint8 encodé en base64, ordre x puis y puis z (orientation LPS : x vers la gauche du patient, y vers l'arrière, z vers le haut). |
 | `data/ctv.json` | Dimensions, espacement et, pour chaque structure, groupe, nom, couleur, boîte englobante `[x0,x1,y0,y1,z0,z1]` et masque binaire empaqueté (bits, ordre little-endian, base64). |
 | `data/ctv_a_contourer.json` | Structures citées par les recommandations de *RCP ORL de poche* mais absentes de l'atlas (larynx, hypopharynx, sinus, fosses nasales, lèvre, parotide…) : créées vides, des deux côtés sauf si `median`, à contourer avec le mode édition. Fichier séparé pour ne pas être écrasé par `scripts/export.py`. |
+| `data/contours_reference.json` | Contours de référence corrigés manuellement dans la visionneuse (export « Exporter les contours »). Ils remplacent au chargement les contours de l'atlas, leurs copies en miroir et les structures vides ; « Revenir au contour initial » ramène à ces contours. Pour les mettre à jour, remplacer ce fichier par un nouvel export. |
 
 Les intensités du jeu source sont normalisées sur 0–255 et non en unités Hounsfield. Les valeurs HU affichées sont estimées par une correspondance linéaire calibrée sur la graisse et les tissus mous : `HU ≈ -100 + 26,4 × (v - 71)`.
 
